@@ -1,0 +1,53 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o monitor
+set -o noglob
+
+# the model name
+MODEL="deepseek-reasoner"
+declare -r MODEL
+
+# prompt file
+PROMPT_FILE=${1:?Prompt file is not specified}
+declare -r PROMPT_FILE
+
+# load a prompt from the file
+PROMPT_JSON=$(jq --raw-input --slurp --compact-output --raw-output 'tojson' "${PROMPT_FILE}")
+declare -r PROMPT_JSON
+
+# temporary file for the JSON request
+REQUEST_FILE=$(mktemp)
+declare -r REQUEST_FILE
+
+# make a request file
+cat > "${REQUEST_FILE}" <<EOF
+{
+  "model": "${MODEL}",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": ${PROMPT_JSON}}
+  ],
+  "stream": false
+}
+EOF
+
+# make a request to Ollama server
+curl 'https://api.deepseek.com/chat/completions' \
+    --silent \
+    --max-time 300 \
+    --header "Content-Type: application/json" \
+    --header "Authorization: Bearer ${DEEPSEEK_API_KEY}" \
+    --request POST \
+    --data-binary "@${REQUEST_FILE}" \
+  | jq '.' \
+  > "${PROMPT_FILE}.response.json"
+
+# extract only text
+jq --raw-output '.choices[0].message.reasoning_content' "${PROMPT_FILE}.response.json" \
+  > "${PROMPT_FILE}.response.txt"
+
+# remove the temporary request file
+rm "${REQUEST_FILE}"
