@@ -7,11 +7,12 @@ ROOT := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 # welcome
 # -----------------------------------------------------------------------------
 
-.DEFAULT_GOAL = info
+.DEFAULT_GOAL = shell
 
-.PHONY: info
-info:
-	@echo "BASH AI: $(ROOT)"
+.PHONY: shell
+shell: export PATH := "$(ROOT)/bin:${PATH}"
+shell:
+	@bash
 
 # -----------------------------------------------------------------------------
 # linters
@@ -20,3 +21,4 @@ info:
 .PHONY: shellcheck
 shellcheck:
 	@shellcheck --norc --shell=bash bin/*
+
