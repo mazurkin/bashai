@@ -12,7 +12,7 @@ ROOT := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 .PHONY: shell
 shell: export PATH := "$(ROOT)/bin:${PATH}"
 shell:
-	@bash
+	@bash --rcfile "$(ROOT)/etc/bashrc"
 
 # -----------------------------------------------------------------------------
 # linters

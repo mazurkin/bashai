@@ -34,7 +34,7 @@ cat > "${REQUEST_FILE}" <<EOF
 }
 EOF
 
-# make a request to Ollama server
+# make a request to API
 curl 'http://localhost:11434/api/generate' \
     --silent \
     --max-time 300 \

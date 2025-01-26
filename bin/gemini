@@ -1,0 +1,75 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o monitor
+set -o noglob
+
+# get a free Google Gemini API Key and set the ${GOOGLE_AI_KEY} environment variable
+# - https://aistudio.google.com/app/apikey
+
+# examples:
+# - https://github.com/google/generative-ai-docs/blob/main/site/en/gemini-api/docs/get-started/rest.ipynb
+
+# documentation
+# - https://ai.google.dev/gemini-api/docs/models/gemini
+# - https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
+# - https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+
+# the model name
+MODEL="gemini-1.5-flash"
+declare -r MODEL
+
+# prompt file path
+PROMPT_FILE="${1:?Prompt file path is not specified}"
+declare -r PROMPT_FILE
+
+# prompt file MIME type
+PROMPT_MIME="${2:-text/plain}"
+declare -r PROMPT_MIME
+
+# temporary file for the JSON request
+REQUEST_FILE=$(mktemp)
+declare -r REQUEST_FILE
+
+# make a request file
+cat > ${REQUEST_FILE} <<EOF
+{
+  "contents": [
+    {
+      "parts": [
+        {
+            "text": "You are a helpful assistant."
+        },
+        {
+          "inline_data": {
+            "mime_type": "${PROMPT_MIME}",
+            "data": "$(base64 -w0 ${PROMPT_FILE})"
+          }
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "temperature": 0.0
+  }
+}
+EOF
+
+# make a request to API
+curl "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GOOGLE_AI_KEY}" \
+    --silent \
+    --max-time 300 \
+    --header "Content-Type: application/json" \
+    --request POST \
+    --data-binary "@${REQUEST_FILE}" \
+  | jq '.' \
+  > "${PROMPT_FILE}.response.json"
+
+# extract only text
+jq --raw-output '.candidates[0].content.parts[0].text' "${PROMPT_FILE}.response.json" \
+  > "${PROMPT_FILE}.response.txt"
+
+# remove the temporary request file
+rm "${REQUEST_FILE}"
